@@ -17,6 +17,7 @@ def load_dataset(dataset_directory, snr):
     for filename in os.listdir(dataset_directory):
         if f'_{snr}' not in filename:
             continue
+        print(dataset_directory + filename)
         file = h5py.File(dataset_directory + filename, 'r')
         data = np.array(file['data'])
         label = np.array(file['label'])
