@@ -81,6 +81,7 @@ def main():
     dataset_directory = '/media/mohammad/Data/dataset/radioml2018/2018.01/'
     dataset_filename = 'GOLD_XYZ_OSC.0001_1024.hdf5'
     split_dataset_directory = '/media/mohammad/Data/radioml/dataset_splited/'
+    split_dataset_directory = '/home/admin/dataset/radioml2018/split_dataset/'
 
     train_ds, val_ds = load_dataset(split_dataset_directory, 20)
     batch_size = 512
@@ -92,7 +93,7 @@ def main():
     model = None
     # model = load_checkpoint('./resource/ckpt/')
     if model == None:
-        model = resnet_radioml.resnet50()
+        model = resnet_radioml.resnet18()
     print(model)
     model.to(device)
 
