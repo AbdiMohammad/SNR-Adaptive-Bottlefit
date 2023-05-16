@@ -10,7 +10,7 @@ from torch.utils import data
 
 from resnet1D_torch import ResNet50
 
-import resnet_radioml
+import resnet_radioml, resnet1D_radioml
 
 
 def load_split_dataset(dataset_directory, snr):
@@ -20,7 +20,7 @@ def load_split_dataset(dataset_directory, snr):
         file = h5py.File(dataset_directory + filename, 'r')
         data = np.array(file['data'])
         label = np.array(file['label'])
-        dataset = torch.utils.data.TensorDataset(torch.permute(torch.from_numpy(data), (0, 2, 1)).unsqueeze(1), torch.from_numpy(label).argmax(1))
+        dataset = torch.utils.data.TensorDataset(torch.permute(torch.from_numpy(data), (0, 2, 1)), torch.from_numpy(label).argmax(1))
         train_ds, val_ds = torch.utils.data.random_split(dataset, [0.8, 0.2])
         return train_ds, val_ds
 
@@ -29,7 +29,7 @@ def load_dataset(dataset_path, snr):
     data = np.array(file['X'])
     label = np.array(file['Y'])
     snrs = np.array(file['Z'])
-    dataset = torch.utils.data.TensorDataset(torch.permute(torch.from_numpy(data), (0, 2, 1)).unsqueeze(1), torch.from_numpy(label).argmax(1))
+    dataset = torch.utils.data.TensorDataset(torch.permute(torch.from_numpy(data), (0, 2, 1)), torch.from_numpy(label).argmax(1))
     dataset = torch.utils.data.Subset(dataset, (snrs == snr).nonzero()[0])
     train_ds, val_ds = torch.utils.data.random_split(dataset, [0.8, 0.2])
     return train_ds, val_ds
@@ -88,10 +88,11 @@ def load_checkpoint(ckpt_directory):
     return model
 
 def main():
-    dataset_directory = '/media/mohammad/Data/dataset/radioml2018/2018.01/'
-    dataset_filename = 'GOLD_XYZ_OSC.0001_1024.hdf5'
-    split_dataset_directory = '/media/mohammad/Data/radioml/split_dataset/'
-    split_dataset_directory = '/home/admin/dataset/radioml2018/split_dataset/'
+    dataset_directory = "/media/mohammad/Data/dataset/radioml2018/2018.01/"
+    dataset_directory = "/home/admin/dataset/radioml2018/2018.01/"
+    dataset_filename = "GOLD_XYZ_OSC.0001_1024.hdf5"
+    split_dataset_directory = "/media/mohammad/Data/radioml/split_dataset/"
+    split_dataset_directory = "/home/admin/dataset/radioml2018/split_dataset/"
 
     # train_ds, val_ds = load_split_dataset(split_dataset_directory, 20)
     train_ds, val_ds = load_dataset(dataset_directory + dataset_filename, 20)
@@ -105,7 +106,7 @@ def main():
     model = None
     # model = load_checkpoint('./resource/ckpt/')
     if model == None:
-        model = resnet_radioml.resnet50()
+        model = resnet1D_radioml.resnet18()
     print(model)
     model.to(device)
 
