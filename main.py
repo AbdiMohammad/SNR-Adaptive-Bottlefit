@@ -10,8 +10,8 @@ from torch.utils import data
 
 from resnet1D_torch import ResNet50
 
-import resnet_radioml, resnet1D_radioml
-
+import resnet_radioml, resnet1D_radioml, resnet_amc
+from pytorch_model_summary import summary
 
 def load_split_dataset(dataset_directory, snr):
     for filename in os.listdir(dataset_directory):
@@ -97,7 +97,7 @@ def main():
     # train_ds, val_ds = load_split_dataset(split_dataset_directory, 20)
     train_ds, val_ds = load_dataset(dataset_directory + dataset_filename, 20)
 
-    batch_size = 512
+    batch_size = 1024
     train_loader = torch.utils.data.DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4)
     val_loader = torch.utils.data.DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=4)
 
@@ -106,25 +106,36 @@ def main():
     model = None
     # model = load_checkpoint('./resource/ckpt/')
     if model == None:
-        model = resnet1D_radioml.resnet18()
-    print(model)
+        model = resnet_amc.ResNet_AMC()
+    model = nn.DataParallel(model)
     model.to(device)
 
     loss_fn = torch.nn.CrossEntropyLoss() 
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.0005, momentum=0.9)
+    optimizer = torch.optim.Adam(model.parameters())
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=5, min_lr=0.0000001)
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    epochs = 100
+    epochs = 1000
     best_val_loss = float('inf')
+    last_val_loss = float('inf')
+    earlystop_cnt = 0
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
         train_one_epoch(train_loader, model, loss_fn, optimizer, device)
         accuracy, val_loss = test(val_loader, model, loss_fn, device)
+        scheduler.step(val_loss)
         # Track best performance, and save the model's state
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             model_path = './resource/ckpt/model_{}'.format(timestamp)
             torch.save(model, model_path)
+        if last_val_loss < val_loss:
+            earlystop_cnt += 1
+        else:
+            earlystop_cnt = 0
+        if earlystop_cnt > 50:
+            break
+        last_val_loss = val_loss
     print("Done!")
 
 
