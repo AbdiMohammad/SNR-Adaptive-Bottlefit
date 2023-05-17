@@ -11,7 +11,7 @@ from torch.utils import data
 from resnet1D_torch import ResNet50
 
 import resnet_radioml, resnet1D_radioml, resnet_amc
-from pytorch_model_summary import summary
+
 
 def load_split_dataset(dataset_directory, snr):
     for filename in os.listdir(dataset_directory):
@@ -30,7 +30,7 @@ def load_dataset(dataset_path, snr):
     label = np.array(file['Y'])
     snrs = np.array(file['Z'])
     dataset = torch.utils.data.TensorDataset(torch.permute(torch.from_numpy(data), (0, 2, 1)), torch.from_numpy(label).argmax(1))
-    dataset = torch.utils.data.Subset(dataset, (snrs == snr).nonzero()[0])
+    # dataset = torch.utils.data.Subset(dataset, (snrs == snr).nonzero()[0])
     train_ds, val_ds = torch.utils.data.random_split(dataset, [0.8, 0.2])
     return train_ds, val_ds
 
@@ -89,15 +89,15 @@ def load_checkpoint(ckpt_directory):
 
 def main():
     dataset_directory = "/media/mohammad/Data/dataset/radioml2018/2018.01/"
-    dataset_directory = "/home/admin/dataset/radioml2018/2018.01/"
+    # dataset_directory = "/home/admin/dataset/radioml2018/2018.01/"
     dataset_filename = "GOLD_XYZ_OSC.0001_1024.hdf5"
     split_dataset_directory = "/media/mohammad/Data/radioml/split_dataset/"
-    split_dataset_directory = "/home/admin/dataset/radioml2018/split_dataset/"
+    # split_dataset_directory = "/home/admin/dataset/radioml2018/split_dataset/"
 
     # train_ds, val_ds = load_split_dataset(split_dataset_directory, 20)
     train_ds, val_ds = load_dataset(dataset_directory + dataset_filename, 20)
 
-    batch_size = 1024
+    batch_size = 512
     train_loader = torch.utils.data.DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4)
     val_loader = torch.utils.data.DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=4)
 
@@ -115,7 +115,8 @@ def main():
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=5, min_lr=0.0000001)
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    epochs = 1000
+    epochs = 120
+    es_patience = 10
     best_val_loss = float('inf')
     last_val_loss = float('inf')
     earlystop_cnt = 0
@@ -133,7 +134,8 @@ def main():
             earlystop_cnt += 1
         else:
             earlystop_cnt = 0
-        if earlystop_cnt > 50:
+        if earlystop_cnt > es_patience:
+            print(f"Early Stopping: Validation loss doesn't decrease after {es_patience} epochs")
             break
         last_val_loss = val_loss
     print("Done!")
