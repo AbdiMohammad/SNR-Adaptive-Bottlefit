@@ -24,14 +24,29 @@ def load_split_dataset(dataset_directory, snr):
         train_ds, val_ds = torch.utils.data.random_split(dataset, [0.8, 0.2])
         return train_ds, val_ds
 
-def load_dataset(dataset_path, snr):
+def load_dataset_snr(dataset_path, snr):
     file = h5py.File(dataset_path, 'r')
     data = np.array(file['X'])
     label = np.array(file['Y'])
     snrs = np.array(file['Z'])
     dataset = torch.utils.data.TensorDataset(torch.permute(torch.from_numpy(data), (0, 2, 1)), torch.from_numpy(label).argmax(1))
-    # dataset = torch.utils.data.Subset(dataset, (snrs == snr).nonzero()[0])
+    dataset = torch.utils.data.Subset(dataset, (snrs == snr).nonzero()[0])
     train_ds, val_ds = torch.utils.data.random_split(dataset, [0.8, 0.2])
+    return train_ds, val_ds
+
+def load_dataset(dataset_path):
+    file = h5py.File(dataset_path, 'r')
+    data = np.array(file['X'])
+    label = np.array(file['Y'])
+    snrs = np.array(file['Z'])
+    dataset = torch.utils.data.TensorDataset(torch.permute(torch.from_numpy(data), (0, 2, 1)), torch.from_numpy(label).argmax(1))
+    datasets_snr = {}
+    train_ds_snr = {}
+    val_ds_snr = {}
+    for snr in np.unique(snrs):
+        datasets_snr[snr] = torch.utils.data.Subset(dataset, (snrs == snr).nonzero()[0])
+        train_ds_snr[snr], val_ds_snr[snr] = torch.utils.data.random_split(datasets_snr[snr], [0.8, 0.2])        
+    train_ds, val_ds = torch.utils.data.ConcatDataset(train_ds_snr.values()), torch.utils.data.ConcatDataset(val_ds_snr.values())
     return train_ds, val_ds
 
 def train_one_epoch(dataloader, model, loss_fn, optimizer, device):
@@ -95,7 +110,8 @@ def main():
     # split_dataset_directory = "/home/admin/dataset/radioml2018/split_dataset/"
 
     # train_ds, val_ds = load_split_dataset(split_dataset_directory, 20)
-    train_ds, val_ds = load_dataset(dataset_directory + dataset_filename, 20)
+    # train_ds, val_ds = load_dataset_snr(dataset_directory + dataset_filename, 20)
+    train_ds, val_ds = load_dataset(dataset_directory + dataset_filename)
 
     batch_size = 512
     train_loader = torch.utils.data.DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4)
