@@ -117,8 +117,8 @@ class Trainer:
         return loss
 
     def _run_epoch(self, epoch):
-        b_size = len(next(iter(self.train_data))[0])
-        print(f"[GPU{self.global_rank}] Epoch {epoch} | Batchsize: {b_size} | Steps: {len(self.train_data)}")
+        size = len(self.train_data.dataset)
+        print(f"[GPU{self.global_rank}] Epoch {epoch} | Batchsize: {len(next(iter(self.train_data))[0])} | Steps: {len(self.train_data)}")
         self.train_data.sampler.set_epoch(epoch)
         running_loss = 0.0
         last_loss = 0.0
@@ -136,7 +136,7 @@ class Trainer:
         return last_loss
 
     def _validate(self):
-        size = len(next(iter(self.val_data))[0])
+        size = len(self.val_data.dataset)
         num_batches = len(self.val_data)
         self.model.eval()
         val_loss, val_acc = 0, 0
