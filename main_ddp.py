@@ -131,7 +131,7 @@ class Trainer:
             running_loss += loss.item()
             if batch % 100 == 99:
                 last_loss, loss, current = running_loss / 100.0, loss.item(), (batch + 1) * len(X)
-                print(f"avg loss: {last_loss:>7f} loss: {loss:>7f}  [{current:>5d}/{b_size:>5d}]")
+                print(f"avg loss: {last_loss:>7f} loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
                 running_loss = 0.0
         return last_loss
 
