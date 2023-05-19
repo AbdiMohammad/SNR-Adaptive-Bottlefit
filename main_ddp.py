@@ -239,4 +239,5 @@ def ddp_setup():
     torch.cuda.set_device(int(os.environ["LOCAL_RANK"]))
 
 if __name__ == '__main__':
+    os.system("mkdir -p ./resource/ckpt/")
     main()
