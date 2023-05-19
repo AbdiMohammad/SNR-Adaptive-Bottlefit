@@ -95,15 +95,15 @@ class Trainer:
         self.best_val_loss = float('inf')
         self.last_val_loss = float('inf')
         self.es_cnt = 0
-        if os.path.exists(output_dir + "snapshot.pt"):
+        if os.path.exists(self.output_dir + "snapshot.pt"):
             print("Loading snapshot")
-            self._load_snapshot(output_dir + "snapshot.pt")
+            self._load_snapshot(self.output_dir + "snapshot.pt")
 
         self.model = DDP(self.model, device_ids=[self.local_rank])
 
-    def _load_snapshot(self, snapshot_path):
+    def _load_snapshot(self):
         loc = f"cuda:{self.local_rank}"
-        snapshot = torch.load(snapshot_path, map_location=loc)
+        snapshot = torch.load(self.output_dir + "snapshot.pt", map_location=loc)
         self.model.load_state_dict(snapshot["MODEL_STATE"])
         self.epochs_run = snapshot["EPOCHS_RUN"]
         print(f"Resuming training from snapshot at Epoch {self.epochs_run}")
@@ -156,8 +156,8 @@ class Trainer:
             "MODEL_STATE": self.model.module.state_dict(),
             "EPOCHS_RUN": epoch,
         }
-        torch.save(snapshot, self.snapshot_path)
-        print(f"Epoch {epoch} | Training snapshot saved at {self.snapshot_path}")
+        torch.save(snapshot, self.output_dir + "snapshot.pt")
+        print(f"Epoch {epoch} | Training snapshot saved at {self.output_dir}snapshot.pt")
 
     def _save_best(self):
         torch.save(self.model.module, f"{self.output_dir}best_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pt")
