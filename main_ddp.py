@@ -126,7 +126,7 @@ class Trainer:
         for batch, (X, y) in enumerate(self.train_data):
             X, y = X.to(self.local_rank), y.to(self.local_rank)
 
-            self._run_batch(X, y)
+            loss = self._run_batch(X, y)
 
             running_loss += loss.item()
             if batch % 100 == 99:
