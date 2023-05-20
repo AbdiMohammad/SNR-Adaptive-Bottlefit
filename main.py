@@ -144,6 +144,7 @@ def main():
         # Track best performance, and save the model's state
         if val_loss < best_val_loss:
             best_val_loss = val_loss
+            os.system("mkdir -p ./resource/ckpt/")
             model_path = './resource/ckpt/model_{}'.format(timestamp)
             torch.save(model, model_path)
         if last_val_loss < val_loss:
