@@ -122,7 +122,7 @@ def main():
     model = None
     # model = load_checkpoint('./resource/ckpt/')
     if model == None:
-        model = resnet_amc.ResNet_AMC()
+        model = resnet1D_radioml.resnet18()
     model = nn.DataParallel(model)
     model.to(device)
 
