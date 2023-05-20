@@ -112,7 +112,7 @@ def main():
     # train_ds, val_ds = load_dataset_snr(dataset_directory + dataset_filename, 20)
     train_ds_snr, val_ds_snr = load_dataset(dataset_directory + dataset_filename)
 
-    batch_size = 512
+    batch_size = 1024
     train_loader = torch.utils.data.DataLoader(torch.utils.data.ConcatDataset(train_ds_snr.values()), batch_size=batch_size, shuffle=True, num_workers=4)
     val_loader = torch.utils.data.DataLoader(torch.utils.data.ConcatDataset(val_ds_snr.values()), batch_size=batch_size, shuffle=False, num_workers=4)
     val_loader_snr = {}
@@ -143,14 +143,14 @@ def main():
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
         train_one_epoch(train_loader, model, loss_fn, optimizer, device)
-        for snr in val_loader_snr:
-            accuracy_snr[snr], val_loss_snr[snr] = test(val_loader_snr[snr], model, loss_fn, device)
-            print(f"Validation Error: SNR: {snr}\n\tAccuracy: {(100*accuracy_snr[snr]):>0.1f}%, Avg loss: {val_loss_snr[snr]:>8f} \n")
         accuracy, val_loss = test(val_loader, model, loss_fn, device)
         print(f"Validation Error:\n\tAccuracy: {(100*accuracy):>0.1f}%, Avg loss: {val_loss:>8f} \n")
         scheduler.step(val_loss)
         # Track best performance, and save the model's state
         if val_loss < best_val_loss:
+            for snr in val_loader_snr:
+                accuracy_snr[snr], val_loss_snr[snr] = test(val_loader_snr[snr], model, loss_fn, device)
+                print(f"Validation Error: SNR: {snr}\n\tAccuracy: {(100*accuracy_snr[snr]):>0.1f}%, Avg loss: {val_loss_snr[snr]:>8f} \n")
             best_val_loss = val_loss
             os.system("mkdir -p ./resource/ckpt/")
             model_path = './resource/ckpt/model_{}'.format(timestamp)
