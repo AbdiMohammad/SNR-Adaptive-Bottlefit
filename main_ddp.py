@@ -15,7 +15,7 @@ from torch.distributed import init_process_group, destroy_process_group
 
 from resnet1D_torch import ResNet50
 
-import resnet_radioml, resnet1D_radioml, resnet_amc
+import resnet_radioml, resnet_1d, resnet_amc
 
 import argparse
 

@@ -10,7 +10,7 @@ from torch.utils import data
 
 from resnet1D_torch import ResNet50
 
-import resnet_radioml, resnet1D_radioml, resnet_amc
+import resnet_radioml, resnet_1d, resnet_amc
 
 
 def load_split_dataset(dataset_directory, snr):
@@ -124,7 +124,7 @@ def main():
     model = None
     # model = load_checkpoint('./resource/ckpt/')
     if model == None:
-        model = resnet1D_radioml.resnet18()
+        model = resnet_1d.resnet18()
     model = nn.DataParallel(model)
     model.to(device)
 
@@ -153,8 +153,10 @@ def main():
                 print(f"Validation Error: SNR: {snr}\n\tAccuracy: {(100*accuracy_snr[snr]):>0.1f}%, Avg loss: {val_loss_snr[snr]:>8f} \n")
             best_val_loss = val_loss
             os.system("mkdir -p ./resource/ckpt/")
-            model_path = './resource/ckpt/model_{}'.format(timestamp)
+            model_path = './resource/ckpt/model_{}.pt'.format(timestamp)
+            model_state_path = './resource/ckpt/model_{}_state.pt'.format(timestamp)
             torch.save(model, model_path)
+            torch.save(model.state_dict(), model_state_path)
         if last_val_loss < val_loss:
             earlystop_cnt += 1
         else:
