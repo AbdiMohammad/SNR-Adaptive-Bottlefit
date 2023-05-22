@@ -12,6 +12,18 @@ from resnet1D_torch import ResNet50
 
 import resnet_radioml, resnet_1d, resnet_amc
 
+# import args
+
+import argparse
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("--snrs", type=list, default=[20], help="List of SNRs to train on (default: [20])")
+parser.add_argument("--batch-size", type=int, default=1024, help="Input batch size on each device (default: 1024)")
+parser.add_argument("--total-epochs", type=int, default=100, help="Total epochs to train the model (default: 100)")
+parser.add_argument("--output-dir", type=str, default="./resource/ckpt/", help="Directory to save the best model checkpoint")
+
+args = parser.parse_args()
 
 def load_split_dataset(dataset_directory, snr):
     for filename in os.listdir(dataset_directory):
@@ -34,20 +46,20 @@ def load_dataset_snr(dataset_path, snr):
     train_ds, val_ds = torch.utils.data.random_split(dataset, [0.8, 0.2])
     return train_ds, val_ds
 
-def load_dataset(dataset_path):
+def load_dataset(dataset_path, snrs):
     file = h5py.File(dataset_path, 'r')
     data = np.array(file['X'])
     label = np.array(file['Y'])
-    snrs = np.array(file['Z'])
+    all_snrs = np.array(file['Z'])
     dataset = torch.utils.data.TensorDataset(torch.permute(torch.from_numpy(data), (0, 2, 1)), torch.from_numpy(label).argmax(1))
     datasets_snr = {}
     train_ds_snr = {}
     val_ds_snr = {}
-    for snr in np.unique(snrs):
-        datasets_snr[snr] = torch.utils.data.Subset(dataset, (snrs == snr).nonzero()[0])
+    for snr in snrs:
+        datasets_snr[snr] = torch.utils.data.Subset(dataset, (all_snrs == snr).nonzero()[0])
         train_ds_snr[snr], val_ds_snr[snr] = torch.utils.data.random_split(datasets_snr[snr], [0.8, 0.2])        
-    train_ds, val_ds = torch.utils.data.ConcatDataset(train_ds_snr.values()), torch.utils.data.ConcatDataset(val_ds_snr.values())
-    return train_ds, val_ds
+    # train_ds, val_ds = torch.utils.data.ConcatDataset(train_ds_snr.values()), torch.utils.data.ConcatDataset(val_ds_snr.values())
+    return train_ds_snr, val_ds_snr
 
 def train_one_epoch(dataloader, model, loss_fn, optimizer, device):
     size = len(dataloader.dataset)
@@ -86,7 +98,6 @@ def test(dataloader, model, loss_fn, device):
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
     test_loss /= num_batches
     correct /= size
-    print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
     return correct, test_loss
 
 def load_checkpoint(ckpt_directory):
@@ -109,13 +120,13 @@ def main():
     split_dataset_directory = "/media/mohammad/Data/radioml/split_dataset/"
     # split_dataset_directory = "/home/admin/dataset/radioml2018/split_dataset/"
 
-    # train_ds, val_ds = load_split_dataset(split_dataset_directory, 20)
-    # train_ds, val_ds = load_dataset_snr(dataset_directory + dataset_filename, 20)
-    train_ds, val_ds = load_dataset(dataset_directory + dataset_filename)
+    train_ds, val_ds = load_dataset(dataset_directory + dataset_filename, args.snrs)
 
-    batch_size = 512
-    train_loader = torch.utils.data.DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4)
-    val_loader = torch.utils.data.DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=4)
+    train_loader = torch.utils.data.DataLoader(torch.utils.data.ConcatDataset(train_ds.values()), batch_size=args.batch_size, shuffle=True, num_workers=4)
+    val_loader = torch.utils.data.DataLoader(torch.utils.data.ConcatDataset(val_ds.values()), batch_size=args.batch_size, shuffle=False, num_workers=4)
+    val_loader_snr = {}
+    for snr in val_ds:
+        val_loader_snr[snr] = torch.utils.data.DataLoader(val_ds[snr], batch_size=args.batch_size, shuffle=False, num_workers=4)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
@@ -131,24 +142,29 @@ def main():
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=5, min_lr=0.0000001)
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    epochs = 120
     es_patience = 10
     best_val_loss = float('inf')
     last_val_loss = float('inf')
     earlystop_cnt = 0
-    for t in range(epochs):
+    accuracy_snr = {}
+    val_loss_snr = {}
+    for t in range(args.total_epochs):
         print(f"Epoch {t+1}\n-------------------------------")
         train_one_epoch(train_loader, model, loss_fn, optimizer, device)
         accuracy, val_loss = test(val_loader, model, loss_fn, device)
+        print(f"Validation Error:\n\tAccuracy: {(100*accuracy):>0.1f}%, Avg loss: {val_loss:>8f} \n")
         scheduler.step(val_loss)
         # Track best performance, and save the model's state
         if val_loss < best_val_loss:
+            for snr in val_loader_snr:
+                accuracy_snr[snr], val_loss_snr[snr] = test(val_loader_snr[snr], model, loss_fn, device)
+                print(f"Validation Error: SNR: {snr}\n\tAccuracy: {(100*accuracy_snr[snr]):>0.1f}%, Avg loss: {val_loss_snr[snr]:>8f} \n")
             best_val_loss = val_loss
-            os.system("mkdir -p ./resource/ckpt/")
-            model_path = './resource/ckpt/model_{}.pt'.format(timestamp)
-            model_state_path = './resource/ckpt/model_{}_state.pt'.format(timestamp)
-            torch.save(model, model_path)
-            torch.save(model.state_dict(), model_state_path)
+            os.system("mkdir -p " + args.output_dir)
+            model_path = f'{args.output_dir}model_{timestamp}_{args.snrs}.pt'
+            model_state_path = f'{args.output_dir}model_{timestamp}_{args.snrs}_state.pt'
+            torch.save(model.module, model_path)
+            torch.save(model.module.state_dict(), model_state_path)
         if last_val_loss < val_loss:
             earlystop_cnt += 1
         else:
