@@ -18,7 +18,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--snrs", type=list, default=[20], help="List of SNRs to train on (default: [20])")
+parser.add_argument("--snrs", nargs="*", type=int, default=[20], help="List of SNRs to train on (default: [20])")
 parser.add_argument("--batch-size", type=int, default=1024, help="Input batch size on each device (default: 1024)")
 parser.add_argument("--total-epochs", type=int, default=100, help="Total epochs to train the model (default: 100)")
 parser.add_argument("--output-dir", type=str, default="./resource/ckpt/", help="Directory to save the best model checkpoint")
@@ -119,7 +119,7 @@ def main():
     dataset_filename = "GOLD_XYZ_OSC.0001_1024.hdf5"
     split_dataset_directory = "/media/mohammad/Data/radioml/split_dataset/"
     # split_dataset_directory = "/home/admin/dataset/radioml2018/split_dataset/"
-
+    print(args.snrs)
     train_ds, val_ds = load_dataset(dataset_directory + dataset_filename, args.snrs)
 
     train_loader = torch.utils.data.DataLoader(torch.utils.data.ConcatDataset(train_ds.values()), batch_size=args.batch_size, shuffle=True, num_workers=4)
