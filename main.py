@@ -46,7 +46,7 @@ def load_dataset_snr(dataset_path, snr):
     train_ds, val_ds = torch.utils.data.random_split(dataset, [0.8, 0.2])
     return train_ds, val_ds
 
-def load_dataset(dataset_path, snrs):
+def load_dataset(dataset_path, snrs=None):
     file = h5py.File(dataset_path, 'r')
     data = np.array(file['X'])
     label = np.array(file['Y'])
@@ -55,9 +55,12 @@ def load_dataset(dataset_path, snrs):
     datasets_snr = {}
     train_ds_snr = {}
     val_ds_snr = {}
+    if snrs == None:
+        snrs = np.unique(all_snrs)
+    generator1 = torch.Generator().manual_seed(1994)
     for snr in snrs:
         datasets_snr[snr] = torch.utils.data.Subset(dataset, (all_snrs == snr).nonzero()[0])
-        train_ds_snr[snr], val_ds_snr[snr] = torch.utils.data.random_split(datasets_snr[snr], [0.8, 0.2])        
+        train_ds_snr[snr], val_ds_snr[snr] = torch.utils.data.random_split(datasets_snr[snr], [0.8, 0.2], generator=generator1)        
     # train_ds, val_ds = torch.utils.data.ConcatDataset(train_ds_snr.values()), torch.utils.data.ConcatDataset(val_ds_snr.values())
     return train_ds_snr, val_ds_snr
 
@@ -119,7 +122,7 @@ def main():
     dataset_filename = "GOLD_XYZ_OSC.0001_1024.hdf5"
     split_dataset_directory = "/media/mohammad/Data/radioml/split_dataset/"
     # split_dataset_directory = "/home/admin/dataset/radioml2018/split_dataset/"
-    print(args.snrs)
+
     train_ds, val_ds = load_dataset(dataset_directory + dataset_filename, args.snrs)
 
     train_loader = torch.utils.data.DataLoader(torch.utils.data.ConcatDataset(train_ds.values()), batch_size=args.batch_size, shuffle=True, num_workers=4)
@@ -161,8 +164,8 @@ def main():
                 print(f"Validation Error: SNR: {snr}\n\tAccuracy: {(100*accuracy_snr[snr]):>0.1f}%, Avg loss: {val_loss_snr[snr]:>8f} \n")
             best_val_loss = val_loss
             os.system("mkdir -p " + args.output_dir)
-            model_path = f'{args.output_dir}model_{timestamp}_{args.snrs}.pt'
-            model_state_path = f'{args.output_dir}model_{timestamp}_{args.snrs}_state.pt'
+            model_path = f'{args.output_dir}model_{args.snrs}.pt'
+            model_state_path = f'{args.output_dir}model_{args.snrs}_state.pt'
             torch.save(model.module, model_path)
             torch.save(model.module.state_dict(), model_state_path)
         if last_val_loss < val_loss:
