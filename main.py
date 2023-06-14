@@ -18,7 +18,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--snrs", nargs="*", type=int, default=[20], help="List of SNRs to train on (default: [20])")
+parser.add_argument("--snrs", nargs="*", type=int, default=None, help="List of SNRs to train on (default: None)")
 parser.add_argument("--batch-size", type=int, default=1024, help="Input batch size on each device (default: 1024)")
 parser.add_argument("--total-epochs", type=int, default=100, help="Total epochs to train the model (default: 100)")
 parser.add_argument("--output-dir", type=str, default="./resource/ckpt/", help="Directory to save the best model checkpoint")
